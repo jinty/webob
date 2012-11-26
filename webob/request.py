@@ -80,7 +80,15 @@ from webob.multidict import (
 
 from webob.util import warn_deprecation
 
-__all__ = ['BaseRequest', 'Request', 'LegacyRequest']
+__all__ = ['BaseRequest', 'Request', 'LegacyRequest', 'RequestDecodeError']
+
+class RequestDecodeError(UnicodeDecodeError):
+    """Raised instead of UnicodeDecodeError when decoding request data"""
+    pass
+
+def _decode_error(unicode_decode_error):
+    """Convert a UnicodeDecodeError into a RequestDecodeError"""
+    return RequestDecodeError(*unicode_decode_error.args)
 
 class _NoDefault:
     def __repr__(self):
@@ -164,7 +172,11 @@ class BaseRequest(object):
             encoding = getattr(self, encattr)
             if encoding in _LATIN_ENCODINGS: # shortcut
                 return val
-            return bytes_(val, 'latin-1').decode(encoding)
+            val = bytes_(val, 'latin-1')
+            try:
+                return val.decode(encoding)
+            except UnicodeDecodeError as e:
+                raise _decode_error(e)
     else:
         def encget(self, key, default=NoDefault, encattr=None):
             val = self.environ.get(key, default)
@@ -175,7 +187,10 @@ class BaseRequest(object):
             if encattr is None:
                 return val
             encoding = getattr(self, encattr)
-            return val.decode(encoding)
+            try:
+                return val.decode(encoding)
+            except UnicodeDecodeError as e:
+                raise _decode_error(e)
 
     def encset(self, key, val, encattr=None):
         if encattr:

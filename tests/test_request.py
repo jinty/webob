@@ -1570,6 +1570,16 @@ class TestBaseRequest(unittest.TestCase):
         inst = self._makeOne({'a':val})
         self.assertEqual(inst.encget('a'), val)
 
+    def test_encget_reraises_params_error(self):
+        val = b'not utf-8: \xfa'
+        if PY3:
+            val = val.decode('latin-1')
+        inst = self._makeOne({'a':val})
+        inst.my_encoding = 'utf-8'
+        from webob.request import RequestDecodeError
+        self.assertRaises(RequestDecodeError,
+                inst.encget, 'a', encattr='my_encoding')
+
     def test_relative_url(self):
         inst = self._blankOne('/%C3%AB/c')
         result = inst.relative_url('a')
@@ -3572,3 +3582,32 @@ class UnseekableInput(object):
 class UnseekableInputWithSeek(UnseekableInput):
     def seek(self, pos, rel=0):
         raise IOError("Invalid seek!")
+
+class TestRequestDecodeError(unittest.TestCase):
+
+    def test_isinstance(self):
+        from webob.request import _decode_error, RequestDecodeError
+        try:
+            b'\xfa'.decode('ascii')
+        except UnicodeDecodeError as orig:
+            new = _decode_error(orig)
+        self.assertTrue(isinstance(new, UnicodeDecodeError))
+        self.assertTrue(isinstance(new, RequestDecodeError))
+
+    def test_attributes(self):
+        from webob.request import _decode_error
+        try:
+            b'\xfa'.decode('ascii')
+        except UnicodeDecodeError as e:
+            orig = e
+            new = _decode_error(orig)
+        self.assertEqual(orig.encoding, new.encoding)
+        self.assertEqual(orig.end, new.end)
+        self.assertEqual(orig.object, new.object)
+        self.assertEqual(orig.reason, new.reason)
+        self.assertEqual(orig.start, new.start)
+        self.assertEqual(orig.args, new.args)
+        # deprecated?
+        #self.assertEqual(orig.message, new.message)
+
+
