@@ -454,6 +454,15 @@ class TestRequestCommon(unittest.TestCase):
         req._charset = ''
         self.assertRaises(AttributeError, setattr, req, 'text', 'abc')
 
+    def test_text_get_with_bad_charset(self):
+        body = b'not utf-8: \xfa'
+        INPUT = BytesIO(body)
+        environ = {'wsgi.input': INPUT, 'CONTENT_LENGTH': str(len(body))}
+        req = self._makeOne(environ)
+        req._charset = 'utf-8'
+        from webob.request import RequestDecodeError
+        self.assertRaises(RequestDecodeError, getattr, req, 'text')
+
     # POST
     def test_POST_not_POST_or_PUT(self):
         from webob.multidict import NoVars

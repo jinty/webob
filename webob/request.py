@@ -731,7 +731,10 @@ class BaseRequest(object):
             raise AttributeError(
                 "You cannot access Request.text unless charset is set")
         body = self.body
-        return body.decode(self.charset)
+        try:
+            return body.decode(self.charset)
+        except UnicodeDecodeError as e:
+            raise _decode_error(e)
 
     def _text__set(self, value):
         if not self.charset:
