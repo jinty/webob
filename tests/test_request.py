@@ -421,6 +421,15 @@ class TestRequestCommon(unittest.TestCase):
         del req.json
         self.assertEqual(req.body, b'')
 
+    def test_evil_non_decodable_json_body(self):
+        body = b'not utf-8: \xfa'
+        INPUT = BytesIO(body)
+        environ = {'wsgi.input': INPUT, 'CONTENT_LENGTH': str(len(body))}
+        req = self._makeOne(environ)
+        req._charset = 'utf-8'
+        from webob.request import RequestDecodeError
+        self.assertRaises(RequestDecodeError, getattr, req, 'json')
+
     # .text
 
     def test_text_body(self):

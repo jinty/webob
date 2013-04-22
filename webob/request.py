@@ -713,7 +713,11 @@ class BaseRequest(object):
 
     def _json_body__get(self):
         """Access the body of the request as JSON"""
-        return json.loads(self.body.decode(self.charset))
+        try:
+            body = self.body.decode(self.charset)
+        except UnicodeDecodeError as e:
+            raise _decode_error(e)
+        return json.loads(body)
 
     def _json_body__set(self, value):
         self.body = json.dumps(value, separators=(',', ':')).encode(self.charset)
